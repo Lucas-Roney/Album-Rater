@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Album Rater</title>
+  <link rel="stylesheet" href="albumRatings.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="record-clipart-vinyl-13.png" type="image/png">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>Album Rater</h1>
+
+  <div id="album-form">
+    <div class="search-container">
+      <input type="text" id="album-name" list="albumSuggestions" placeholder="Enter album name" />
+      <datalist id="albumSuggestions"></datalist>
+      <button id="search-btn">🔍</button>
+    </div>
+
+    <div class="action-buttons">
+      <button id="toggleRatingsBtn">View All Ratings</button>
+      <button id="analyticsBtn">View Analytics</button>
+    </div>
+  </div>
+
+  <div id="result"></div>
+
+  <!-- ✅ Analytics Panel -->
+  <div id="analyticsPanel" style="display:none;">
+    <div class="analytics-tabs">
+      <button data-tab="decade">📊 Decades</button>
+      <button data-tab="genre">🎶 Genres</button>
+      <button data-tab="artist">🎤 Artists</button>
+    </div>
+
+    <div id="analyticsContent">
+      <div id="decadeView" class="analytics-view"></div>
+      <div id="genreView" class="analytics-view" style="display:none;"></div>
+      <div id="artistView" class="analytics-view" style="display:none;"></div>
+    </div>
+  </div>
+
+  <script src="albumRatings.js"></script>
+</body>
+</html>
