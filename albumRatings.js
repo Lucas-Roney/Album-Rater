@@ -78,54 +78,92 @@ function getGlowClass(rating) {
   return "glow-masterpiece";                                     // 9–10+
 }
 
+function normalizeGenre(genre) {
+  if (!genre) return "Unknown Genre";
+  const g = genre.trim().toLowerCase();
+  if (["rap", "hip hop", "hip-hop", "hiphop", "hip-hop/rap"].includes(g)) return "Rap";
+  if (["r&b", "rnb", "rhythm and blues"].includes(g)) return "R&B";
+  if (["electronic", "edm", "dance"].includes(g)) return "Electronic";
+  // Add more mappings as needed
+  return genre.trim();
+}
+
+function getBestRatedTags(sortedAlbums, sortOption) {
+  let groupKeyFn, groupLabel;
+
+  if (sortOption.includes("genre")) {
+    groupKeyFn = (d) => normalizeGenre(d.genre);
+    groupLabel = "in";
+  } else if (sortOption.includes("artist")) {
+    groupKeyFn = (d) => d.artist || "Unknown Artist";
+    groupLabel = "by";
+  } else if (sortOption.includes("date")) {
+    groupKeyFn = (d) => {
+      const year = new Date(d.releaseDate).getFullYear();
+      return isNaN(year) ? "Unknown Decade" : `${Math.floor(year / 10) * 10}s`;
+    };
+    groupLabel = "in";
+  } else {
+    groupKeyFn = null;
+    groupLabel = "";
+  }
+
+  const bestByGroup = {};
+  let bestOverall = { album: null, rating: -Infinity };
+
+  for (const [album, data] of sortedAlbums) {
+    const rating = parseFloat(data.rating);
+    if (isNaN(rating)) continue;
+
+    const groupKey = groupKeyFn ? groupKeyFn(data) : null;
+
+    if (groupKey) {
+      if (!bestByGroup[groupKey] || rating > bestByGroup[groupKey].rating) {
+        bestByGroup[groupKey] = { album, rating };
+      }
+    }
+
+    if (rating > bestOverall.rating) {
+      bestOverall = { album, rating };
+    }
+  }
+
+  return { bestByGroup, bestOverall, groupKeyFn, groupLabel };
+}
 
 function renderAllRatings(sortOption = currentSortOption, page = 1) {
-  console.log("Rendering all ratings:", sortOption, page);
   currentSortOption = sortOption;
   currentPage = page;
   localStorage.setItem("sortOption", sortOption);
 
-  const resultDiv = document.getElementById('result');
-  const savedRatings = JSON.parse(localStorage.getItem('albumRatings')) || {};
+  const resultDiv = document.getElementById("result");
+  const savedRatings = JSON.parse(localStorage.getItem("albumRatings")) || {};
 
   if (Object.keys(savedRatings).length === 0) {
     resultDiv.innerHTML = "<p>No ratings saved yet.</p>";
     return;
   }
 
+  // Sort albums
   let sortedAlbums = Object.entries(savedRatings);
+  const sorters = {
+    ratingAsc: (a, b) => a[1].rating - b[1].rating || a[0].localeCompare(b[0]),
+    ratingDesc: (a, b) => b[1].rating - a[1].rating || a[0].localeCompare(b[0]),
+    artistAsc: (a, b) => (a[1].artist || "").localeCompare(b[1].artist || ""),
+    artistDesc: (a, b) => (b[1].artist || "").localeCompare(a[1].artist || ""),
+    genreAsc: (a, b) => (a[1].genre || "").localeCompare(b[1].genre || ""),
+    genreDesc: (a, b) => (b[1].genre || "").localeCompare(a[1].genre || ""),
+    dateAsc: (a, b) => new Date(a[1].releaseDate || 0) - new Date(b[1].releaseDate || 0),
+    dateDesc: (a, b) => new Date(b[1].releaseDate || 0) - new Date(a[1].releaseDate || 0)
+  };
+  sortedAlbums.sort(sorters[sortOption]);
 
-  switch (sortOption) {
-    case "ratingAsc":
-      sortedAlbums.sort((a, b) => a[1].rating - b[1].rating || a[0].localeCompare(b[0]));
-      break;
-    case "ratingDesc":
-      sortedAlbums.sort((a, b) => b[1].rating - a[1].rating || a[0].localeCompare(b[0]));
-      break;
-    case "artistAsc":
-      sortedAlbums.sort((a, b) => (a[1].artist || "").localeCompare(b[1].artist || ""));
-      break;
-    case "artistDesc":
-      sortedAlbums.sort((a, b) => (b[1].artist || "").localeCompare(a[1].artist || ""));
-      break;
-    case "genreAsc":
-      sortedAlbums.sort((a, b) => (a[1].genre || "").localeCompare(b[1].genre || ""));
-      break;
-    case "genreDesc":
-      sortedAlbums.sort((a, b) => (b[1].genre || "").localeCompare(a[1].genre || ""));
-      break;
-    case "dateAsc":
-      sortedAlbums.sort((a, b) => new Date(a[1].releaseDate || 0) - new Date(b[1].releaseDate || 0));
-      break;
-    case "dateDesc":
-      sortedAlbums.sort((a, b) => new Date(b[1].releaseDate || 0) - new Date(a[1].releaseDate || 0));
-      break;
-  }
-
+  // Pagination setup
   const totalPages = Math.ceil(sortedAlbums.length / albumsPerPage);
   const startIndex = (page - 1) * albumsPerPage;
   const paginatedAlbums = sortedAlbums.slice(startIndex, startIndex + albumsPerPage);
 
+  // Build HTML
   const sortIcons = {
     ratingDesc: "🔼", ratingAsc: "🔽",
     artistAsc: "🎤", artistDesc: "🎤",
@@ -134,18 +172,17 @@ function renderAllRatings(sortOption = currentSortOption, page = 1) {
   };
 
   let html = `
-    <div id="rating-scale" style="display: flex; gap: 12px; align-items: center; font-size: 0.85em; color: #ccc;margin-bottom: 8px;">
-      <strong style="color: whitesmoke;">Rating Scale:</strong>
-      <div style="display: flex; gap: 8px;">
-        <div style="color: rgba(238, 41, 41, 1);">0–2: Skip</div>
-        <div style="color: rgba(238, 202, 41, 1);">2–4: Weak</div>
-        <div style="color: rgba(195, 238, 41, 1);">4–6: Mid</div>
-        <div style="color: rgba(133, 207, 73, 1);">6–7: Good</div>
-        <div style="color: #27c45bff;">7–8: Great</div>
-        <div style="color: #00ff95ff;">8–9: Excellent</div>
-        <div style="color: #00ffff;">9–10: Masterpiece</div>
+    <div id="rating-scale" style="display:flex; gap:12px; align-items:center; font-size:0.85em; color:#ccc; margin-bottom:8px;">
+      <strong style="color:whitesmoke;">Rating Scale:</strong>
+      <div style="display:flex; gap:8px;">
+        <div style="color:rgba(238,41,41,1);">0–2: Skip</div>
+        <div style="color:rgba(238,202,41,1);">2–4: Weak</div>
+        <div style="color:rgba(195,238,41,1);">4–6: Mid</div>
+        <div style="color:rgba(133,207,73,1);">6–7: Good</div>
+        <div style="color:#27c45bff;">7–8: Great</div>
+        <div style="color:#00ff95ff;">8–9: Excellent</div>
+        <div style="color:#00ffff;">9–10: Masterpiece</div>
       </div>
-    </div>
     </div>
     <div style="text-align:right; margin-bottom:8px;">
       <select id="sortSelect">
@@ -167,93 +204,157 @@ function renderAllRatings(sortOption = currentSortOption, page = 1) {
     <ul style="list-style:none; padding:0; margin:0;">
   `;
 
-  for (const [album, data] of paginatedAlbums) {
-    const displayName = capitalizeAlbumName(album);
-    const coverHTML = data.cover
-      ? `<img src="${escapeHTML(data.cover)}" alt="Album Cover" style="max-width:50px; vertical-align:middle; border-radius:5px;">`
-      : '';
+  const { bestByGroup, bestOverall } = getBestRatedTags(sortedAlbums, sortOption);
 
-    const ratingDisplay = data.rating === "S" ? "⏭️ Skip" :
-                          data.rating === "I" ? "🎵 Interlude" :
-                          `${data.rating} / 10`;
+for (const [album, data] of paginatedAlbums) {
+  const displayName = capitalizeAlbumName(album);
+  const coverHTML = data.cover
+    ? `<img src="${escapeHTML(data.cover)}" alt="Album Cover" style="max-width:50px; vertical-align:middle; border-radius:5px;">`
+    : '';
 
-    html += `
-      <li class="rating-item" data-album="${escapeHTML(album)}" style="margin:6px 0; display:flex; align-items:center; background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:8px; cursor:pointer;">
-        <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            ${coverHTML}<strong>${escapeHTML(displayName)}</strong>
-          </div>
-          ${getVisibleMetadata(sortOption, data)}
-        </div>
-        <div style="flex:1; text-align:center;">
-          <span class="glow-rating ${getGlowClass(data.rating)}">${ratingDisplay}</span>
-        </div>
-        <div style="flex:1; text-align:right;">
-          <button class="delete-btn" data-album="${escapeHTML(album)}">🗑</button>
-        </div>
-      </li>
-    `;
+  const ratingDisplay = data.rating === "S" ? "⏭️ Skip" :
+                        data.rating === "I" ? "🎵 Interlude" :
+                        `${data.rating} / 10`;
+
+  // Determine group key and label based on sort mode
+  let groupKey = null;
+  let label = "in";
+
+  if (sortOption.includes("genre")) {
+    groupKey = data.genre || "Unknown Genre";
+  } else if (sortOption.includes("artist")) {
+    groupKey = data.artist || "Unknown Artist";
+    label = "by";
+  } else if (sortOption.includes("date")) {
+    const year = new Date(data.releaseDate).getFullYear();
+    groupKey = isNaN(year) ? "Unknown Decade" : `${Math.floor(year / 10) * 10}s`;
   }
 
+  // Trophy logic
+  const isBestInGroup = groupKey && bestByGroup[groupKey]?.album === album;
+  const isBestOverall = bestOverall.album === album;
+
+  let tagHTML = "";
+  if (isBestInGroup && isBestOverall) {
+    tagHTML = `<div class="best-tag overall">🏆🏆 Best rated ${label} ${escapeHTML(groupKey)}</div>`;
+  } else if (isBestInGroup) {
+    tagHTML = `<div class="best-tag">🏆 Best rated ${label} ${escapeHTML(groupKey)}</div>`;
+  }
+
+  html += `
+    <li class="rating-item" data-album="${escapeHTML(album)}" style="margin:6px 0; display:flex; align-items:center; background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:8px; cursor:pointer;">
+      <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          ${coverHTML}<strong>${escapeHTML(displayName)}</strong>
+        </div>
+        ${tagHTML}
+        ${getVisibleMetadata(sortOption, data)}
+      </div>
+      <div style="flex:1; text-align:center;">
+        <span class="glow-rating ${getGlowClass(data.rating)}">${ratingDisplay}</span>
+      </div>
+      <div style="flex:1; text-align:right;">
+        <button class="delete-btn" data-album="${escapeHTML(album)}">🗑</button>
+      </div>
+    </li>
+  `;
+}
   html += "</ul>";
 
-  if (totalPages > 1) {
-    html += `<div style="text-align:center; margin-bottom:8px; color:#ccc;">Page ${currentPage} of ${totalPages}</div>`;
-    html += `<div style="text-align:center; margin-top:12px;">`;
+  // Pagination controls
+if (totalPages > 1) {
+  const maxVisible = 5;
+  const pageButtons = [];
 
-    const maxVisible = 5;
-    const pageButtons = [];
-
-    if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) pageButtons.push(i);
-    } else {
-      pageButtons.push(1);
-      if (currentPage > 3) pageButtons.push("…");
-      const start = Math.max(2, currentPage - 1);
-      const end = Math.min(totalPages - 1, currentPage + 1);
-      for (let i = start; i <= end; i++) pageButtons.push(i);
-      if (currentPage < totalPages - 2) pageButtons.push("…");
-      pageButtons.push(totalPages);
-    }
-
-    pageButtons.forEach(p => {
-      if (p === "…") {
-        html += `<span style="margin:0 6px; color:white;">…</span>`;
-      } else {
-        html += `<button class="page-btn${p === currentPage ? ' active' : ''}" data-page="${p}" style="margin:0 4px;">${p}</button>`;
-      }
-    });
-
-    html += `</div>`;
+  if (totalPages <= maxVisible) {
+    for (let i = 1; i <= totalPages; i++) pageButtons.push(i);
+  } else {
+    pageButtons.push(1);
+    if (currentPage > 3) pageButtons.push("…");
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(totalPages - 1, currentPage + 1);
+    for (let i = start; i <= end; i++) pageButtons.push(i);
+    if (currentPage < totalPages - 2) pageButtons.push("…");
+    pageButtons.push(totalPages);
   }
 
-  resultDiv.innerHTML = html;
-  document.getElementById('sortSelect').value = sortOption;
+  html += `<div class="pagination-bar">`;
 
-  document.getElementById('sortSelect').addEventListener('change', e =>
-    renderAllRatings(e.target.value, 1)
-  );
+  // ⬅️ Arrow (left-aligned)
+  if (currentPage > 1) {
+    html += `<button class="page-arrow left" data-page="${currentPage - 1}">⬅️</button>`;
+  } else {
+    html += `<button class="page-arrow left" disabled>⬅️</button>`;
+  }
 
-  resultDiv.querySelectorAll('.delete-btn').forEach(btn =>
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      deleteRating(btn.dataset.album);
-    })
-  );
+  // Page buttons (centered)
+  html += `<div class="page-buttons">`;
+  pageButtons.forEach(p => {
+    if (p === "…") {
+      html += `<span class="ellipsis">…</span>`;
+    } else {
+      html += `<button class="page-btn${p === currentPage ? ' active' : ''}" data-page="${p}">${p}</button>`;
+    }
+  });
+  html += `</div>`;
 
-  resultDiv.querySelectorAll('.rating-item').forEach(item =>
-    item.addEventListener('click', e => {
-      if (!e.target.classList.contains('delete-btn')) {
-        editRating(item.dataset.album);
-      }
-    })
-  );
+  // ➡️ Arrow (right-aligned)
+  if (currentPage < totalPages) {
+    html += `<button class="page-arrow right" data-page="${currentPage + 1}">➡️</button>`;
+  } else {
+    html += `<button class="page-arrow right" disabled>➡️</button>`;
+  }
 
-  resultDiv.querySelectorAll('.page-btn').forEach(btn =>
-    btn.addEventListener('click', () => renderAllRatings(sortOption, parseInt(btn.dataset.page)))
-  );
+  html += `</div>`;
 }
 
+resultDiv.innerHTML = html;
+document.getElementById("sortSelect").value = sortOption;
+
+// Wire up interactions
+document.getElementById("sortSelect").addEventListener("change", e =>
+  renderAllRatings(e.target.value, 1)
+);
+
+resultDiv.querySelectorAll(".delete-btn").forEach(btn =>
+  btn.addEventListener("click", e => {
+    e.stopPropagation();
+    deleteRating(btn.dataset.album);
+  })
+);
+
+resultDiv.querySelectorAll(".rating-item").forEach(item =>
+  item.addEventListener("click", e => {
+    if (!e.target.classList.contains("delete-btn")) {
+      editRating(item.dataset.album);
+    }
+  })
+);
+
+resultDiv.querySelectorAll(".page-btn").forEach(btn =>
+  btn.addEventListener("click", () =>
+    renderAllRatings(sortOption, parseInt(btn.dataset.page))
+  )
+);
+
+resultDiv.querySelectorAll(".page-arrow").forEach(btn =>
+  btn.addEventListener("click", () =>
+    renderAllRatings(sortOption, parseInt(btn.dataset.page))
+  )
+);
+
+  resultDiv.querySelectorAll(".page-btn").forEach(btn =>
+    btn.addEventListener("click", () =>
+      renderAllRatings(sortOption, parseInt(btn.dataset.page))
+    )
+  );
+
+    resultDiv.querySelectorAll(".page-arrow").forEach(btn =>
+    btn.addEventListener("click", () =>
+      renderAllRatings(sortOption, parseInt(btn.dataset.page))
+    )
+  );
+}
 function getVisibleMetadata(sortOption, data) {
   const parts = [];
   if (sortOption.startsWith("artist") && data.artist)
@@ -268,92 +369,86 @@ function getVisibleMetadata(sortOption, data) {
 function searchAlbum(event = null, prefillKey = null, forceViewOnly = false) {
   if (event?.preventDefault) event.preventDefault();
 
-  if (event) event.preventDefault();
-  const resultDiv = document.getElementById('result');
-  const savedRatings = JSON.parse(localStorage.getItem('albumRatings')) || {};
-  let albumInput = document.getElementById('album-name').value.trim();
-  let albumKey, albumDisplayName, existingData = null;
-  document.getElementById("analyticsPanel").style.display = "none"; // ✅ Hide analytics
-
+  const resultDiv = document.getElementById("result");
+  const savedRatings = JSON.parse(localStorage.getItem("albumRatings")) || {};
   const cancelBtn = document.getElementById("toggleRatingsBtn");
+  document.getElementById("analyticsPanel").style.display = "none";
+
+  let albumInput = document.getElementById("album-name").value.trim();
+  let albumKey, albumDisplayName, existingData = null;
 
   if (prefillKey) {
-  albumKey = prefillKey;
-  existingData = savedRatings[albumKey] || null;
-  albumDisplayName = capitalizeAlbumName(albumKey);
-  document.getElementById('album-name').value = albumDisplayName;
-
-  editMode = !forceViewOnly; // ✅ Only enter edit mode if not forced to view
-  cancelBtn.textContent = editMode ? "❌ Cancel" : "View All Ratings";
-  cancelBtn.classList.toggle("cancel-mode", editMode);
-} else {
-    editMode = false;
-    cancelBtn.textContent = "View All Ratings";
-    cancelBtn.classList.remove("cancel-mode");
-
+    albumKey = prefillKey;
+    existingData = savedRatings[albumKey] || null;
+    albumDisplayName = capitalizeAlbumName(albumKey);
+    document.getElementById("album-name").value = albumDisplayName;
+    editMode = !forceViewOnly;
+  } else {
     if (!albumInput) {
       resultDiv.innerHTML = "<p>Please enter an album name.</p>";
       resultDiv.style.display = "block";
       return;
     }
-
     albumKey = normalizeAlbumName(albumInput);
     albumDisplayName = capitalizeAlbumName(albumInput);
-    existingData = savedRatings.hasOwnProperty(albumKey) ? savedRatings[albumKey] : null;
+    existingData = savedRatings[albumKey] || null;
+    editMode = false;
+  }
 
-    // ✅ Only run fuzzy match if no exact match
-    if (!existingData) {
-  const matches = fuzzyMatch(albumKey, Object.keys(savedRatings));
-  if (matches.length) {
-  resultDiv.innerHTML = `
-    <p>No exact match found. Did you mean:</p>
-    <ul style="list-style:none; padding:0;">
-      ${matches.map(m => `<li><button class="suggest-btn" style="margin:4px;">${capitalizeAlbumName(m)}</button></li>`).join("")}
-    </ul>
-    <div style="margin-top:10px;">
-      <button id="forceRateBtn" class="rate-anyway-btn">No Rate "${escapeHTML(albumInput)}"</button>
-    </div>
-  `;
-  document.getElementById("forceRateBtn").addEventListener("click", () => {
-    const normalizedKey = normalizeAlbumName(albumInput);
-    searchAlbum(null, normalizedKey, false); // force edit mode with typed name
-  });
-    resultDiv.style.display = "block";
+  cancelBtn.textContent = editMode ? "❌ Cancel" : "View All Ratings";
+  cancelBtn.classList.toggle("cancel-mode", editMode);
 
-    resultDiv.querySelectorAll(".suggest-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const normalizedKey = normalizeAlbumName(btn.textContent);
-    searchAlbum(null, normalizedKey, true); // ✅ force view-only
-  });
-});
+  // 🔍 Fuzzy album and artist suggestions
+  if (!existingData) {
+    const albumMatches = fuzzyMatch(albumKey, Object.keys(savedRatings));
+    const artistMatches = Object.entries(savedRatings)
+      .filter(([_, data]) => fuzzyMatch(albumKey, [data.artist || ""]).length > 0)
+      .map(([key]) => key);
 
-    return;
+    if (albumMatches.length || artistMatches.length) {
+      let html = `<p>No exact match found. Did you mean:</p><ul style="list-style:none; padding:0;">`;
+      albumMatches.forEach(m => {
+        html += `<li><button class="suggest-btn">${capitalizeAlbumName(m)}</button></li>`;
+      });
+      artistMatches.forEach(m => {
+        html += `<li><button class="suggest-btn">${capitalizeAlbumName(m)}</button> <span style="color:#ccc;">(artist match)</span></li>`;
+      });
+      html += `</ul><div style="margin-top:10px;">
+        <button id="forceRateBtn" class="rate-anyway-btn">No Rate "${escapeHTML(albumInput)}"</button>
+      </div>`;
+
+      resultDiv.innerHTML = html;
+      resultDiv.style.display = "block";
+
+      document.getElementById("forceRateBtn")?.addEventListener("click", () =>
+        searchAlbum(null, normalizeAlbumName(albumInput), false)
+      );
+
+      resultDiv.querySelectorAll(".suggest-btn").forEach(btn =>
+        btn.addEventListener("click", () =>
+          searchAlbum(null, normalizeAlbumName(btn.textContent), true)
+        )
+      );
+
+      return;
     }
   }
-}
 
-  // ✅ Render album view or rating form
+  // 🎯 Render rating form or view-only
   if (existingData && forceViewOnly) {
+    const glowClass = getGlowClass(existingData.rating);
+    const ratingDisplay = existingData.rating === "S" ? "⏭️ Skip" :
+                          existingData.rating === "I" ? "🎵 Interlude" :
+                          `${existingData.rating} / 10`;
     const albumId = extractSpotifyAlbumId(existingData.spotifyURL);
-
     const coverHTML = existingData.cover
       ? `<img src="${escapeHTML(existingData.cover)}" alt="Album Cover" style="max-width:200px; display:block; margin:10px auto; border-radius:10px;">`
       : '';
-
     const spotifyEmbedHTML = albumId
       ? `<div id="spotify-player" style="margin-top:10px;">
            <iframe src="https://open.spotify.com/embed/album/${albumId}" width="100%" height="80" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" style="border-radius:10px;"></iframe>
          </div>`
       : '';
-
-    resultDiv.classList.remove("fade-in");
-    void resultDiv.offsetWidth;
-    resultDiv.classList.add("fade-in");
-
-    const glowClass = getGlowClass(existingData.rating);
-    const ratingDisplay = existingData.rating === "S" ? "⏭️ Skip" :
-                      existingData.rating === "I" ? "🎵 Interlude" :
-                      `${existingData.rating} / 10`;
 
     resultDiv.innerHTML = `
       <h2>${escapeHTML(albumDisplayName)}</h2>
@@ -369,8 +464,8 @@ function searchAlbum(event = null, prefillKey = null, forceViewOnly = false) {
       </div>
     `;
 
-    resultDiv.querySelector('.edit-single-btn').addEventListener('click', () => editRating(albumKey));
-    resultDiv.querySelector('.delete-single-btn').addEventListener('click', () => deleteRating(albumKey));
+    resultDiv.querySelector('.edit-single-btn')?.addEventListener('click', () => editRating(albumKey));
+    resultDiv.querySelector('.delete-single-btn')?.addEventListener('click', () => deleteRating(albumKey));
   } else {
     renderRatingForm(albumKey, albumDisplayName, existingData);
   }
@@ -570,7 +665,8 @@ function wireUpRatingForm(albumKey, albumDisplayName) {
       ? `<img src="${escapeHTML(coverURL)}" alt="Album Cover" style="max-width:200px; display:block; margin:10px auto; border-radius:10px;">`
       : '';
 
-    resultDiv.innerHTML = `<h2>${escapeHTML(albumDisplayName)}</h2>${coverHTML}<p><strong>Rating Saved:</strong> <span class="glow-rating">${finalRating} / 10</span></p>`;
+    const glowClass = getGlowClass(finalRating);
+    resultDiv.innerHTML = `<h2>${escapeHTML(albumDisplayName)}</h2>${coverHTML}<p><strong>Rating Saved:</strong> <span class="glow-rating ${glowClass}">${finalRating} / 10</span></p>`;
   });
 }
 
@@ -702,14 +798,6 @@ function setupEventListeners() {
 
 function fuzzyMatch(input, candidates, maxDistance = 3) {
   const normalizedInput = normalizeAlbumName(input);
-  const acronymMap = getAcronymMap(JSON.parse(localStorage.getItem("albumRatings")) || {});
-
-  // Check acronym match first
-  if (acronymMap.hasOwnProperty(normalizedInput)) {
-    return [acronymMap[normalizedInput]];
-  }
-
-  // Then fall back to Levenshtein fuzzy matching
   return candidates.filter(candidate => {
     const distance = levenshtein(normalizedInput, normalizeAlbumName(candidate));
     return distance <= maxDistance;

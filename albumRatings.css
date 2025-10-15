@@ -114,15 +114,6 @@ h1 {
   color: whitesmoke;
 }
 
-/* Rating number with glow effect */
-.glow-rating {
-  color: rgb(255, 255, 255);
-  text-shadow: 0 0 18px #00ffff;
-  font-weight: bold;
-  font-size: 1.1em;
-  margin-left: 10px;
-}
-
 /* Edit/Delete buttons inside results */
 #result .edit-btn,
 #result .delete-btn,
@@ -249,6 +240,59 @@ h1 {
   font-weight: bold;
 }
 
+.page-arrow {
+  background-color: rgba(31, 31, 31, 0.8); /* same base as .page-btn */
+  color: white;
+  border: 2px solid whitesmoke;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.3s, border-color 0.3s, box-shadow 0.2s;
+}
+
+.page-arrow:hover {
+  background-color: rgb(23, 124, 119);    /* teal glow */
+  border-color: #00ffff;
+  box-shadow: 0 0 6px #00ffff;
+}
+
+.page-arrow:disabled {
+  opacity: 0.4;
+  cursor: default;
+  box-shadow: none;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding: 0 4px;
+}
+
+.page-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-grow: 1;
+}
+
+.page-arrow.left {
+  margin-right: auto;
+}
+
+.page-arrow.right {
+  margin-left: auto;
+}
+
+.ellipsis {
+  color: white;
+  margin: 0 6px;
+  font-size: 16px;
+}
+
 /* Global layout */
 body {
   background-image: radial-gradient(rgb(32, 32, 32), rgb(22, 22, 22));
@@ -363,15 +407,6 @@ h1 {
   box-shadow: 0 0 8px rgba(97, 97, 97, 0.616);
   text-align: center;
   color: whitesmoke;
-}
-
-/* Rating number with glow effect */
-.glow-rating {
-  color: rgb(255, 255, 255);
-  text-shadow: 0 0 18px #00ffff;
-  font-weight: bold;
-  font-size: 1.1em;
-  margin-left: 10px;
 }
 
 /* Edit/Delete buttons inside results */
@@ -926,4 +961,16 @@ h1 {
     0 0 6px #00ffff,
     0 0 12px rgba(0, 255, 255, 0.6),
     0 0 18px rgba(0, 255, 255, 0.4);
+}
+
+.best-tag {
+  font-size: 0.8em;
+  color: #00ffff;
+  margin-top: 2px;
+}
+
+.best-tag.overall {
+  color: gold;
+  font-weight: bold;
+  text-shadow: 0 0 6px #ffd700;
 }
