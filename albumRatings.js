@@ -172,18 +172,19 @@ function renderAllRatings(sortOption = currentSortOption, page = 1) {
   };
 
   let html = `
-    <div id="rating-scale" style="display:flex; gap:12px; align-items:center; font-size:0.85em; color:#ccc; margin-bottom:8px;">
+    <div id="rating-scale" style="display:flex; gap:12px; align-items:center; font-size:0.85em; margin-bottom:8px;">
       <strong style="color:whitesmoke;">Rating Scale:</strong>
       <div style="display:flex; gap:8px;">
-        <div style="color:rgba(238,41,41,1);">0–2: Skip</div>
-        <div style="color:rgba(238,202,41,1);">2–4: Weak</div>
-        <div style="color:rgba(195,238,41,1);">4–6: Mid</div>
-        <div style="color:rgba(133,207,73,1);">6–7: Good</div>
-        <div style="color:#27c45bff;">7–8: Great</div>
-        <div style="color:#00ff95ff;">8–9: Excellent</div>
-        <div style="color:#00ffff;">9–10: Masterpiece</div>
+        <div class="glow-rating glow-skip">0–2: Skip</div>
+        <div class="glow-rating glow-weak">2–4: Weak</div>
+        <div class="glow-rating glow-decent">4–6: Mid</div>
+        <div class="glow-rating glow-good">6–7: Good</div>
+        <div class="glow-rating glow-great">7–8: Great</div>
+        <div class="glow-rating glow-excellent">8–9: Excellent</div>
+        <div class="glow-rating glow-masterpiece">9–10: Masterpiece</div>
       </div>
     </div>
+
     <div style="text-align:right; margin-bottom:8px;">
       <select id="sortSelect">
         <option value="ratingDesc">${sortIcons.ratingDesc} Rating ↑</option>
@@ -355,6 +356,7 @@ resultDiv.querySelectorAll(".page-arrow").forEach(btn =>
     )
   );
 }
+
 function getVisibleMetadata(sortOption, data) {
   const parts = [];
   if (sortOption.startsWith("artist") && data.artist)
@@ -541,6 +543,35 @@ function renderRatingForm(albumKey, albumDisplayName, existingData) {
     document.getElementById("release-date").value = existingData.releaseDate ?? "";
   }
 
+    if (existingData?.songs && Object.keys(existingData.songs).length > 0) {
+    document.querySelector('input[value="individual"]').checked = true;
+    document.getElementById("song-entry-container").style.display = "block";
+    document.getElementById("avgSong").disabled = true;
+    document.getElementById("calcAvgBtn").style.display = "inline-block";
+
+    const songsInputs = document.getElementById("songsInputs");
+    songsInputs.innerHTML = "";
+
+    Object.entries(existingData.songs).forEach(([title, song], i) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "song-input";
+
+      const label = document.createElement("label");
+      label.textContent = `${title}: `;
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = "1–10, S, I";
+      input.pattern = "[0-9]|10|S|I";
+      input.style.textTransform = "uppercase";
+      input.value = song.rating;
+
+      wrapper.appendChild(label);
+      wrapper.appendChild(input);
+      songsInputs.appendChild(wrapper);
+    });
+  }
+
   wireUpRatingForm(albumKey, albumDisplayName);
 }
 
@@ -643,6 +674,17 @@ function wireUpRatingForm(albumKey, albumDisplayName) {
     const artist = document.getElementById("artist").value.trim();
     const genre = document.getElementById("genre").value.trim();
     const releaseDate = document.getElementById("release-date").value;
+    const songs = {};
+    const avgMode = document.querySelector('input[name="avgSongMode"]:checked')?.value;
+    if (avgMode === "individual") {
+      const songInputs = document.querySelectorAll(".song-input input");
+      songInputs.forEach((input, i) => {
+        const val = input.value.trim().toUpperCase();
+        if (!val) return;
+
+        songs[`Song ${i + 1}`] = { rating: val }; // You can expand this later to include notes
+      });
+    }
 
     if ([lyricism, instrumentation, vibe, avgSong].some(v => isNaN(v) || v < 1 || v > 10) || skips < 0) {
       alert("Please enter valid numbers (1–10) for ratings and non-negative skips.");
@@ -656,7 +698,7 @@ function wireUpRatingForm(albumKey, albumDisplayName) {
 
     savedRatings[normalizedKey] = {
       rating: finalRating, avgSong, lyricism, instrumentation, vibe, skips,
-      artist, genre, releaseDate, cover: coverURL, spotifyURL
+      artist, genre, releaseDate, cover: coverURL, spotifyURL, songs 
     };
 
     localStorage.setItem("albumRatings", JSON.stringify(savedRatings));
@@ -667,7 +709,7 @@ function wireUpRatingForm(albumKey, albumDisplayName) {
       : '';
 
     const glowClass = getGlowClass(finalRating);
-    resultDiv.innerHTML = `<h2>${escapeHTML(albumDisplayName)}</h2>${coverHTML}<p><strong>Rating Saved:</strong> <span class="glow-rating ${glowClass}">${finalRating} / 10</span></p>`;
+    searchAlbum(null, normalizeAlbumName(albumDisplayName), true);
   });
 }
 
@@ -1030,6 +1072,13 @@ function groupByArtist(ratings) {
   for (const artist in grouped) {
     const count = grouped[artist].albums.length;
     grouped[artist].avgRating = +(grouped[artist].total / count).toFixed(2);
+
+    // ✅ Sort albums chronologically by release date
+    grouped[artist].albums.sort((a, b) => {
+      const dateA = new Date(a.releaseDate || 0);
+      const dateB = new Date(b.releaseDate || 0);
+      return dateA - dateB;
+    });
   }
 
   return grouped;
