@@ -980,21 +980,21 @@ function renderDecadeChart(containerId = "decadeView") {
 
   if (top3.length >= 3) {
     const podiumHTML = `
-      <div class="podium">
-        <div class="silver">
-          <strong class="decade">${top3[1].decade}</strong><br>
-          <span>🥈<span class="glow-rating">${top3[1].rating}</span> 🥈</span>
-        </div>
-        <div class="gold">
-          <strong class="decade">${top3[0].decade}</strong><br>
-          <span>🥇<span class="glow-rating">${top3[0].rating}</span> 🥇</span>
-        </div>
-        <div class="bronze">
-          <strong class="decade">${top3[2].decade}</strong><br>
-          <span>🥉<span class="glow-rating">${top3[2].rating}</span> 🥉</span>
-        </div>
+    <div class="podium">
+      <div class="silver">
+        <strong class="decade">${top3[1].decade}</strong><br>
+        <span>🥈<span class="glow-rating glow-silver">${top3[1].rating}</span> 🥈</span>
       </div>
-    `;
+      <div class="gold">
+        <strong class="decade">${top3[0].decade}</strong><br>
+        <span>🥇<span class="glow-rating glow-gold">${top3[0].rating}</span> 🥇</span>
+      </div>
+      <div class="bronze">
+        <strong class="decade">${top3[2].decade}</strong><br>
+        <span>🥉<span class="glow-rating glow-bronze">${top3[2].rating}</span> 🥉</span>
+      </div>
+    </div>
+  `;
     container.querySelector("#podiumContainer").innerHTML = podiumHTML;
   }
 }
@@ -1223,19 +1223,19 @@ function renderGenreBreakdown(containerId = "genreView") {
   if (top3.length >= 3) {
     const podiumHTML = `
       <div class="podium">
-        <div class="silver">
-          <strong class="genre">${top3[1].genre}</strong><br>
-          <span>🥈 <span class="glow-rating">${top3[1].rating}</span> 🥈</span>
-        </div>
-        <div class="gold">
-          <strong class="genre">${top3[0].genre}</strong><br>
-          <span>🥇 <span class="glow-rating">${top3[0].rating}</span> 🥇</span>
-        </div>
-        <div class="bronze">
-          <strong class="genre">${top3[2].genre}</strong><br>
-          <span>🥉 <span class="glow-rating">${top3[2].rating}</span> 🥉</span>
-        </div>
+      <div class="silver">
+        <strong class="genre">${top3[1].genre}</strong><br>
+        <span>🥈<span class="glow-rating glow-silver">${top3[1].rating}</span> 🥈</span>
       </div>
+      <div class="gold">
+        <strong class="genre">${top3[0].genre}</strong><br>
+        <span>🥇<span class="glow-rating glow-gold">${top3[0].rating}</span> 🥇</span>
+      </div>
+      <div class="bronze">
+        <strong class="genre">${top3[2].genre}</strong><br>
+        <span>🥉<span class="glow-rating glow-bronze">${top3[2].rating}</span> 🥉</span>
+      </div>
+    </div>
     `;
     container.querySelector("#genrePodiumContainer").innerHTML = podiumHTML;
   }
