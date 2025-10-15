@@ -366,7 +366,7 @@ function getVisibleMetadata(sortOption, data) {
   return parts.length ? `<div style="font-size:0.9em; color:#ccc;">${parts.join(" • ")}</div>` : "";
 }
 
-function searchAlbum(event = null, prefillKey = null, forceViewOnly = false) {
+function searchAlbum(event = null, prefillKey = null, forceViewOnly = false, overrideInput = null) {
   if (event?.preventDefault) event.preventDefault();
 
   const resultDiv = document.getElementById("result");
@@ -374,7 +374,7 @@ function searchAlbum(event = null, prefillKey = null, forceViewOnly = false) {
   const cancelBtn = document.getElementById("toggleRatingsBtn");
   document.getElementById("analyticsPanel").style.display = "none";
 
-  let albumInput = document.getElementById("album-name").value.trim();
+  let albumInput = overrideInput ?? document.getElementById("album-name").value.trim();
   let albumKey, albumDisplayName, existingData = null;
 
   if (prefillKey) {
@@ -399,7 +399,7 @@ function searchAlbum(event = null, prefillKey = null, forceViewOnly = false) {
   cancelBtn.classList.toggle("cancel-mode", editMode);
 
   // 🔍 Fuzzy album and artist suggestions
-  if (!existingData) {
+  if (!existingData && !overrideInput) {
     const albumMatches = fuzzyMatch(albumKey, Object.keys(savedRatings));
     const artistMatches = Object.entries(savedRatings)
       .filter(([_, data]) => fuzzyMatch(albumKey, [data.artist || ""]).length > 0)
@@ -420,9 +420,10 @@ function searchAlbum(event = null, prefillKey = null, forceViewOnly = false) {
       resultDiv.innerHTML = html;
       resultDiv.style.display = "block";
 
-      document.getElementById("forceRateBtn")?.addEventListener("click", () =>
-        searchAlbum(null, normalizeAlbumName(albumInput), false)
-      );
+      document.getElementById("forceRateBtn")?.addEventListener("click", () => {
+        document.getElementById("album-name").value = albumInput;
+        searchAlbum(null, null, false, albumInput);
+      });
 
       resultDiv.querySelectorAll(".suggest-btn").forEach(btn =>
         btn.addEventListener("click", () =>
