@@ -620,6 +620,14 @@ h1 {
   width: 100px;
 }
 
+.podium .gold .decade {
+  color: gold;
+}
+
+.podium .gold .genre {
+  color: gold;
+}
+
 .podium .silver {
   text-align: center;
   padding: 10px;
@@ -632,6 +640,14 @@ h1 {
   width: 100px;
 }
 
+.podium .silver .decade {
+  color: silver;
+}
+
+.podium .silver .genre {
+  color: silver;
+}
+
 .podium .bronze {
   text-align: center;
   padding: 10px;
@@ -642,6 +658,14 @@ h1 {
   box-shadow: 0 0 6px #cd7f32;
   font-weight: bold;
   width: 100px;
+}
+
+.podium .bronze .decade {
+  color: #cd7f32;
+}
+
+.podium .bronze .genre {
+  color: #cd7f32;
 }
 
 .podium span {
@@ -983,4 +1007,12 @@ h1 {
     0 0 4px #cd7f32,
     0 0 12px rgba(205, 127, 50, 0.6),
     0 0 18px rgba(205, 127, 50, 0.4);
+}
+
+.top-artist {
+  color: white;
+  text-shadow:
+    0 0 4px gold,
+    0 0 12px rgba(255, 215, 0, 0.6),
+    0 0 18px rgba(255, 215, 0, 0.4);
 }

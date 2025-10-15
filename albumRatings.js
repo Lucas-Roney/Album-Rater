@@ -1096,24 +1096,44 @@ function renderArtistBreakdown(containerId = "artistView") {
   const totalPages = Math.ceil(sortedArtists.length / artistsPerPage);
   const startIndex = (currentArtistPage - 1) * artistsPerPage;
   const paginatedArtists = sortedArtists.slice(startIndex, startIndex + artistsPerPage);
+  const topArtistName = sortedArtists[0]?.[0]; // the artist with highest avgRating
 
   for (const [artist, data] of paginatedArtists) {
-    const avgGlowClass = getGlowClass(data.avgRating);
-    html += `<div class="artist-block">
-      <div style="display: inline-block; margin-bottom: 6px;">
-        <h3 style="margin: 0;">${escapeHTML(artist)} — <span class="glow-rating ${avgGlowClass}">${data.avgRating}</span></h3>
-        <div style="height: 1px; background-color: #00ffff; margin-top: 4px;"></div>
-      </div>
-      <ul>`;
-    data.albums.forEach(album => {
-      const year = album.releaseDate ? ` (${new Date(album.releaseDate).getFullYear()})` : "";
-      const albumGlowClass = getGlowClass(album.rating);
-      html += `<li>
-        <strong>${escapeHTML(album.name)}${year}</strong> — <span class="glow-rating ${albumGlowClass}">${album.rating}</span>
-        ${album.spotifyUrl ? ` <a href="${escapeHTML(album.spotifyUrl)}" target="_blank">▶</a>` : ""}
-      </li>`;
-    });
-    html += `</ul></div>`;
+  const isTopArtist = artist === topArtistName;
+  const avgGlowClass = isTopArtist ? "top-artist" : getGlowClass(data.avgRating);
+
+  html += `
+  <div class="artist-block" 
+       style="border-left: 4px solid ${isTopArtist ? 'gold' : '#00ffff'}; 
+              padding-left: 8px; 
+              border-radius: 4px;">
+    <div style="display: inline-block; margin-bottom: 6px;">
+      <h3 style="margin: 0;">
+        <span class="${isTopArtist ? 'top-artist' : ''}">
+          ${escapeHTML(artist)}
+        </span> 
+        <span class="${isTopArtist ? 'top-artist' : ''}">—</span> 
+        <span class="glow-rating ${avgGlowClass}">${data.avgRating}</span>
+      </h3>
+      <div style="height: 1px; background-color: ${isTopArtist ? 'gold' : '#00ffff'}; margin-top: 4px;"></div>
+    </div>
+    <ul>
+`;
+
+data.albums.forEach(album => {
+  const year = album.releaseDate ? ` (${new Date(album.releaseDate).getFullYear()})` : "";
+  const albumGlowClass = getGlowClass(album.rating);
+  html += `
+    <li>
+      <strong>${escapeHTML(album.name)}${year}</strong> — 
+      <span class="glow-rating ${albumGlowClass}">${album.rating}</span>
+      ${album.spotifyUrl ? ` <a href="${escapeHTML(album.spotifyUrl)}" target="_blank">▶</a>` : ""}
+    </li>
+  `;
+});
+
+html += `</ul></div>`;
+
   }
 
   html += `</div>`;
